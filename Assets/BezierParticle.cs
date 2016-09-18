@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[ExecuteInEditMode]
 public class BezierParticle : MonoBehaviour {
 
 	public Transform p1;
@@ -14,15 +15,15 @@ public class BezierParticle : MonoBehaviour {
 	void LateUpdate () {
 		InitializeIfNeeded ();
 
-		int numParticleAlive = _particleSystem.GetParticles (_particles);
+		int numParticlesAlive = _particleSystem.GetParticles (_particles);
 
-		for (int i = 0; i < numParticleAlive; i++) {
+		for (int i = 0; i < numParticlesAlive; i++) {
 			QuadraticBezierCurve curve = new QuadraticBezierCurve (p1.position, p2.position, p3.position);
-			float lifetimeRate = _particles[i].lifetime / _particles[i].startLifetime;
-			Debug.Log (lifetimeRate);
-			Debug.Log (curve.GetPosition(lifetimeRate));
+			float lifetimeRate = 1.0f - ( _particles[i].lifetime / _particles[i].startLifetime );
 			_particles [i].position = curve.GetPosition(lifetimeRate);
 		}
+
+        _particleSystem.SetParticles(_particles, numParticlesAlive);
 	}
 
 	void InitializeIfNeeded(){
