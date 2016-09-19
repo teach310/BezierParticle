@@ -14,6 +14,7 @@ class QuadraticBezierCurve{
 	}
 
 	public Vector3 GetPosition(float t){
+        //Vector3 p12 = Vector3.Lerp(point1, point2, t);
 		Vector3 p12 = point1 * (1.0f - t) + point2 * t;
 		Vector3 p23 = point2 * (1.0f - t) + point3 * t;
 		Vector3 p = p12 * (1.0f - t) + p23 * t;
