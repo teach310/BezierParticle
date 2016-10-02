@@ -18,20 +18,25 @@ public class BezierSplineEditor : Editor {
 
     private int selectedIndex = -1;
 
-    public enum BezierControlPointMode {
-        Free,
-        Aligned,
-        Mirrored
-    }
-
-    [SerializeField]
-    private BezierControlPointMode[] modes;
+    private static Color[] modeColors = {
+        Color.white,  // Free
+        Color.yellow, // Aligned
+        Color.cyan    // Mirrored
+    };
 
 
     public override void OnInspectorGUI()
     {
         //DrawDefaultInspector();
         spline = target as BezierSpline;
+        EditorGUI.BeginChangeCheck();
+        bool loop = EditorGUILayout.Toggle("Loop", spline.Loop);
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(spline, "Toggle Loop");
+            EditorUtility.SetDirty(spline);
+            spline.Loop = loop;
+        }
         if(selectedIndex >=0 && selectedIndex < spline.ControlPointCount)
         {
             DrawSelectedPointInspector();
@@ -54,6 +59,17 @@ public class BezierSplineEditor : Editor {
             Undo.RecordObject(spline, "Move Point");
             EditorUtility.SetDirty(spline);
             spline.SetControlPoint(selectedIndex, point);
+        }
+        EditorGUI.BeginChangeCheck();
+        BezierControlPointMode mode = (BezierControlPointMode)
+            EditorGUILayout.EnumPopup("Mode", spline.GetControlPointMode(selectedIndex));
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(spline, "Change Point Mode");
+            //EnumPopupの変更を適用
+            spline.SetControlPointMode(selectedIndex, mode);
+            //変更が保存されるように
+            EditorUtility.SetDirty(spline);
         }
     }
 
@@ -103,11 +119,12 @@ public class BezierSplineEditor : Editor {
         Vector3 point = handleTransform.TransformPoint(spline.GetControlPoint(index));
         //screenSizeによってハンドルのサイズが変わらないようにする。
         float size = HandleUtility.GetHandleSize(point);
-        Handles.color = Color.white;
+        Handles.color = modeColors[(int)spline.GetControlPointMode(index)];
         //ボタン生成
         if(Handles.Button(point, handleRotation, size * handleSize, size * pickSize, Handles.DotCap))
         {
             selectedIndex = index;
+            //シーンビューを更新
             Repaint();
         }
         if (selectedIndex == index)

@@ -2,10 +2,22 @@
 using System.Collections;
 using System;
 
+public enum BezierControlPointMode
+{
+    Free, // 向き、長さは自由
+    Aligned, // 向きは反対、長さは自由
+    Mirrored //向きは反対、長さは一緒
+}
+
 public class BezierSpline : MonoBehaviour {
 
     [SerializeField]
     private Vector3[] points;
+
+
+
+    [SerializeField]
+    private BezierControlPointMode[] modes;
 
     public int ControlPointCount
     {
@@ -22,12 +34,30 @@ public class BezierSpline : MonoBehaviour {
     public void SetControlPoint(int index, Vector3 point)
     {
         points[index] = point;
+        EnforceMode(index); // 線の方向の補正
     }
 
     public int CurveCount {
         get
         {
             return (points.Length - 1) / 3;
+        }
+    }
+
+    [SerializeField]
+    private bool loop;
+    public bool Loop {
+        get
+        {
+            return loop;
+        }set
+        {
+            loop = value;
+            if (value == true)
+            {
+                modes[modes.Length - 1] = modes[0];
+                SetControlPoint(0, points[0]);
+            }
         }
     }
 
@@ -39,6 +69,12 @@ public class BezierSpline : MonoBehaviour {
             new Vector3(2f, 0, 0),
             new Vector3(3f, 0, 0),
             new Vector3(4f, 0, 0)
+        };
+
+        modes = new BezierControlPointMode[]
+        {
+            BezierControlPointMode.Free,
+            BezierControlPointMode.Free
         };
     }
     
@@ -99,6 +135,66 @@ public class BezierSpline : MonoBehaviour {
         points[points.Length - 2] = point;
         point.x += 1f;
         points[points.Length - 1] = point;
-        
+
+        // 配列の長さを更新
+        Array.Resize(ref modes, modes.Length + 1);
+        //一番後ろの値をコピー
+        modes[modes.Length - 1] = modes[modes.Length - 2];
+        // 元一番後ろの点の向きを補正
+        EnforceMode(points.Length - 4);
+    }
+
+
+    // point index sequence 0,1,2,3,4,5...　
+    // mode index sequence 0,0,1,1,1,2,2... 点と方向のグループ
+
+    public BezierControlPointMode GetControlPointMode(int index)
+    {
+        return modes[(index + 1) / 3];
+    }
+
+    public void SetControlPointMode(int index, BezierControlPointMode mode)
+    {
+        modes[(index + 1) / 3] = mode;
+        EnforceMode(index);
+    }
+
+    //Modeによる補正をかける
+    void EnforceMode(int index)
+    {
+        int modeIndex = (index + 1) / 3;
+        BezierControlPointMode mode = modes[modeIndex];
+        //はじっこ or Freeならば
+        if(mode == BezierControlPointMode.Free || modeIndex == 0 || modeIndex == modes.Length - 1)
+        {
+            return;
+        }
+        // 点
+        int middleIndex = modeIndex * 3;
+        int fixedIndex, enforcedIndex;
+        // index : クリック、移動した点の番号
+        if (index <= middleIndex) // いじった点がleft or middleならば
+        {
+            fixedIndex = middleIndex - 1; // leftを元に
+            enforcedIndex = middleIndex + 1; // rightを補正する
+        }
+        else
+        {
+            fixedIndex = middleIndex + 1;
+            enforcedIndex = middleIndex - 1;
+        }
+
+        Vector3 middle = points[middleIndex];
+        // fixedからmiddleへのベクトル
+        Vector3 enforcedTangent = middle - points[fixedIndex];
+
+        if (mode == BezierControlPointMode.Aligned)
+        {
+            enforcedTangent = enforcedTangent.normalized * Vector3.Distance(middle, points[enforcedIndex]);
+        }
+        // fixedと反対方向にenforceを配置
+        points[enforcedIndex] = middle + enforcedTangent;
+
+
     }
 }
