@@ -13,20 +13,47 @@ public class BezierSplineEditor : Editor {
     private const int stepsPerCurve = 10;
     private const float directionScale = 0.5f;
 
-    private const float handleSize = 0.2f;
-    private const float pickSize = 0.2f;
+    private const float handleSize = 0.04f;
+    private const float pickSize = 0.06f;
 
     private int selectedIndex = -1;
 
+    public enum BezierControlPointMode {
+        Free,
+        Aligned,
+        Mirrored
+    }
+
+    [SerializeField]
+    private BezierControlPointMode[] modes;
+
+
     public override void OnInspectorGUI()
     {
-        DrawDefaultInspector();
+        //DrawDefaultInspector();
         spline = target as BezierSpline;
+        if(selectedIndex >=0 && selectedIndex < spline.ControlPointCount)
+        {
+            DrawSelectedPointInspector();
+        }
         if (GUILayout.Button("Add Curve"))
         {
             Undo.RecordObject(spline, "Add Curve");
             spline.AddCurve();
             EditorUtility.SetDirty(spline);
+        }
+    }
+
+    void DrawSelectedPointInspector()
+    {
+        GUILayout.Label("Selected Point");
+        EditorGUI.BeginChangeCheck();
+        Vector3 point = EditorGUILayout.Vector3Field("Position", spline.GetControlPoint(selectedIndex));
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(spline, "Move Point");
+            EditorUtility.SetDirty(spline);
+            spline.SetControlPoint(selectedIndex, point);
         }
     }
 
@@ -39,7 +66,7 @@ public class BezierSplineEditor : Editor {
 
         Vector3 p0 = ShowPoint(0);
 
-        for (int i = 1; i < spline.points.Length; i += 3)
+        for (int i = 1; i < spline.ControlPointCount; i += 3)
         {
             Vector3 p1 = ShowPoint(i);
             Vector3 p2 = ShowPoint(i + 1);
@@ -73,12 +100,15 @@ public class BezierSplineEditor : Editor {
     // Handleを作成する
     Vector3 ShowPoint(int index)
     {
-        Vector3 point = handleTransform.TransformPoint(spline.points[index]);
+        Vector3 point = handleTransform.TransformPoint(spline.GetControlPoint(index));
+        //screenSizeによってハンドルのサイズが変わらないようにする。
+        float size = HandleUtility.GetHandleSize(point);
         Handles.color = Color.white;
         //ボタン生成
-        if(Handles.Button(point, handleRotation, handleSize, pickSize, Handles.DotCap))
+        if(Handles.Button(point, handleRotation, size * handleSize, size * pickSize, Handles.DotCap))
         {
             selectedIndex = index;
+            Repaint();
         }
         if (selectedIndex == index)
         {
@@ -88,7 +118,7 @@ public class BezierSplineEditor : Editor {
             {
                 Undo.RecordObject(spline, "Move Point");
                 EditorUtility.SetDirty(spline);
-                spline.points[index] = handleTransform.InverseTransformPoint(point);
+                spline.SetControlPoint(index, handleTransform.InverseTransformPoint(point));
             }
         }
         return point;
