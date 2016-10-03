@@ -119,6 +119,10 @@ public class BezierSplineEditor : Editor {
         Vector3 point = handleTransform.TransformPoint(spline.GetControlPoint(index));
         //screenSizeによってハンドルのサイズが変わらないようにする。
         float size = HandleUtility.GetHandleSize(point);
+		// 先頭のみ点の大きさを2倍にする．
+		if (index == 0) {
+			size *= 2f;
+		}
         Handles.color = modeColors[(int)spline.GetControlPointMode(index)];
         //ボタン生成
         if(Handles.Button(point, handleRotation, size * handleSize, size * pickSize, Handles.DotCap))

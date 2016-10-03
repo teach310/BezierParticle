@@ -33,7 +33,39 @@ public class BezierSpline : MonoBehaviour {
 
     public void SetControlPoint(int index, Vector3 point)
     {
+		//model : 0, 3, 6...
+		// modelを移動させたらその前後も一緒い動くようにする．
+		if (index % 3 == 0) {
+			//delta : 移動距離
+			Vector3 delta = point - points [index];
+			// ループ時
+			if (loop) {
+				if (index == 0) {// 先頭
+					points [1] += delta;
+					points [points.Length - 2] += delta;
+					points [points.Length - 1] = point;
+				} else if (index == points.Length - 1) { //末尾
+					points [0] = point;
+					points [1] += delta;
+					points [points.Length - 2] += delta;
+				} else {
+					points [index - 1] += delta;
+					points [index + 1] += delta;
+				}
+			} else {
+
+				// move previous point
+				if (index > 0) {
+					points [index - 1] += delta;
+				}
+				// move next point
+				if (index + 1 < points.Length) {
+					points [index + 1] += delta;
+				}
+			}
+		}
         points[index] = point;
+
         EnforceMode(index); // 線の方向の補正
     }
 
@@ -142,6 +174,13 @@ public class BezierSpline : MonoBehaviour {
         modes[modes.Length - 1] = modes[modes.Length - 2];
         // 元一番後ろの点の向きを補正
         EnforceMode(points.Length - 4);
+
+		// loopなら先頭と同期
+		if (loop) {
+			points [points.Length - 1] = points [0];
+			modes [modes.Length - 1] = modes [0];
+			EnforceMode (0);
+		}
     }
 
 
@@ -155,7 +194,17 @@ public class BezierSpline : MonoBehaviour {
 
     public void SetControlPointMode(int index, BezierControlPointMode mode)
     {
-        modes[(index + 1) / 3] = mode;
+		// 真ん中の点 = model
+		int modelIndex = (index + 1) / 3;
+		modes[modelIndex] = mode;
+		//ループなら，端っこのmodeを同期
+		if (loop) {
+			if (modelIndex == 0) {
+				modes [modes.Length - 1] = mode;
+			}else if(modelIndex == modes.Length - 1){
+				modes [0] = mode;
+			}
+		}
         EnforceMode(index);
     }
 
@@ -165,7 +214,7 @@ public class BezierSpline : MonoBehaviour {
         int modeIndex = (index + 1) / 3;
         BezierControlPointMode mode = modes[modeIndex];
         //はじっこ or Freeならば
-        if(mode == BezierControlPointMode.Free || modeIndex == 0 || modeIndex == modes.Length - 1)
+		if(mode == BezierControlPointMode.Free || !loop && (modeIndex == 0 || modeIndex == modes.Length - 1))
         {
             return;
         }
@@ -176,12 +225,24 @@ public class BezierSpline : MonoBehaviour {
         if (index <= middleIndex) // いじった点がleft or middleならば
         {
             fixedIndex = middleIndex - 1; // leftを元に
+			if (fixedIndex < 0) {
+				fixedIndex = points.Length - 2;
+			}
             enforcedIndex = middleIndex + 1; // rightを補正する
+			if (enforcedIndex >= points.Length) {
+				enforcedIndex = 1;
+			}
         }
         else
         {
             fixedIndex = middleIndex + 1;
+			if (fixedIndex >= points.Length) {
+				fixedIndex = 1;
+			}
             enforcedIndex = middleIndex - 1;
+			if (enforcedIndex < 0) {
+				enforcedIndex = points.Length - 2;
+			}
         }
 
         Vector3 middle = points[middleIndex];
